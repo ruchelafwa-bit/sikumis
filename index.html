@@ -161,7 +161,16 @@
                     class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">⬇️ Export Excel</button>
                 <button onclick="logoutAdmin()"
                     class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Logout</button>
-            </div>
+            </di>
+
+    <!-- Filter Tanggal -->
+    <input type="date" id="startDate" class="p-2 border rounded">
+    <input type="date" id="endDate" class="p-2 border rounded">
+    <button onclick="loadGuests()" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">
+        Filter
+    </button>
+</div>
+
             <!-- STATISTIK PENGUNJUNG -->
 <div id="statsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
     <div class="bg-sky-600 text-white p-4 rounded shadow text-center">
@@ -307,13 +316,26 @@
        function loadGuests() {
     const guests = JSON.parse(localStorage.getItem("guests") || "[]"),
         search = document.getElementById("searchInput").value.toLowerCase(),
+        startDate = document.getElementById("startDate").value,
+        endDate = document.getElementById("endDate").value,
         list = document.getElementById("guestList");
 
     list.innerHTML = guests
-        .filter(e =>
-            e.nama.toLowerCase().includes(search) ||
-            new Date(e.waktu).toISOString().slice(0, 10).includes(search)
-        )
+        .filter(e => {
+            const tanggal = new Date(e.waktu).toISOString().slice(0, 10);
+
+            // Filter nama atau tanggal (search box)
+            const cocokSearch =
+                e.nama.toLowerCase().includes(search) ||
+                tanggal.includes(search);
+
+            // Filter berdasarkan rentang tanggal
+            let cocokTanggal = true;
+            if (startDate && tanggal < startDate) cocokTanggal = false;
+            if (endDate && tanggal > endDate) cocokTanggal = false;
+
+            return cocokSearch && cocokTanggal;
+        })
         .map((e, i) => `
             <tr class="border-b hover:bg-gray-50">
                 <td class="p-2">${new Date(e.waktu).toLocaleString()}</td>
@@ -333,6 +355,12 @@
                 </td>
             </tr>
         `).join("");
+
+    updateStats();
+
+    document.getElementById("startDate").addEventListener("change", loadGuests);
+document.getElementById("endDate").addEventListener("change", loadGuests);
+
 }
         function deleteGuest(index) {
             if (confirm("Yakin ingin menghapus data tamu ini?")) {
