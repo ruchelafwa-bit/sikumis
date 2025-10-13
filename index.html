@@ -24,9 +24,8 @@
 
     <!-- HALAMAN HOME -->
     <section id="home"
-        class="min-h-screen flex flex-col justify-center items-center relative text-white text-center bg-slideshow">
-        <div class="absolute inset-0 bg-sky-900/70"></div>
-        style="background-image: url('imigrasi.jpg');">
+    class="min-h-screen flex flex-col justify-center items-center relative text-white text-center bg-slideshow"
+    style="background-image: url('imigrasi.jpg');">
         <div class="absolute inset-0 bg-sky-900/70"></div>
         <button onclick="showPage('adminLogin')"
             class="absolute top-5 right-5 px-4 py-2 bg-yellow-400 text-sky-900 rounded-full font-bold shadow hover:bg-yellow-500 z-20">🔑
@@ -161,7 +160,7 @@
                     class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600">⬇️ Export Excel</button>
                 <button onclick="logoutAdmin()"
                     class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Logout</button>
-            </di>
+            </div>
 
     <!-- Filter Tanggal -->
     <input type="date" id="startDate" class="p-2 border rounded">
@@ -208,9 +207,19 @@
                     <tbody id="guestList"></tbody>
                 </table>
             </div>
-            <button onclick="showPage('home')"
-                class="mt-4 py-2 px-4 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">⬅ Kembali ke Menu
-                Utama</button>
+            <!-- Tombol kembali -->
+<button onclick="showPage('home')"
+class="mt-4 py-2 px-4 bg-gray-300 text-gray-700 rounded hover:bg-gray-400">
+⬅ Kembali ke Menu Utama
+</button>
+
+<!-- PAGINATION CONTROL -->
+<div class="flex justify-center gap-4 mt-6 items-center" id="paginationControls">
+  <button id="prevPage" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">⬅ Prev</button>
+  <span id="pageInfo" class="font-semibold"></span>
+  <button id="nextPage" class="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Next ➡</button>
+</div>
+
         </div>
     </section>
 
@@ -313,55 +322,6 @@
         });
 
         // ADMIN
-       function loadGuests() {
-    const guests = JSON.parse(localStorage.getItem("guests") || "[]"),
-        search = document.getElementById("searchInput").value.toLowerCase(),
-        startDate = document.getElementById("startDate").value,
-        endDate = document.getElementById("endDate").value,
-        list = document.getElementById("guestList");
-
-    list.innerHTML = guests
-        .filter(e => {
-            const tanggal = new Date(e.waktu).toISOString().slice(0, 10);
-
-            // Filter nama atau tanggal (search box)
-            const cocokSearch =
-                e.nama.toLowerCase().includes(search) ||
-                tanggal.includes(search);
-
-            // Filter berdasarkan rentang tanggal
-            let cocokTanggal = true;
-            if (startDate && tanggal < startDate) cocokTanggal = false;
-            if (endDate && tanggal > endDate) cocokTanggal = false;
-
-            return cocokSearch && cocokTanggal;
-        })
-        .map((e, i) => `
-            <tr class="border-b hover:bg-gray-50">
-                <td class="p-2">${new Date(e.waktu).toLocaleString()}</td>
-                <td class="p-2">${e.nik}</td>
-                <td class="p-2">${e.nama}</td>
-                <td class="p-2">${e.alamat}</td>
-                <td class="p-2">${e.telepon}</td>
-                <td class="p-2">${e.instansi}</td>
-                <td class="p-2">${e.bertemu}</td>
-                <td class="p-2">${e.tujuan}</td>
-                <td class="p-2">${e.rombongan}</td>
-                <td class="p-2">${e.foto ? `<img src="${e.foto}" class="w-20 h-16 object-cover rounded cursor-pointer" onclick="openModal('${i}')"/>` : '-'}</td>
-                <td class="p-2">${e.petugas}</td>
-                <td class="p-2 flex gap-2">
-                    <button onclick="editGuest(${i})" class="px-2 py-1 bg-yellow-400 rounded hover:bg-yellow-500">✏️</button>
-                    <button onclick="deleteGuest(${i})" class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600">🗑️</button>
-                </td>
-            </tr>
-        `).join("");
-
-    updateStats();
-
-    document.getElementById("startDate").addEventListener("change", loadGuests);
-document.getElementById("endDate").addEventListener("change", loadGuests);
-
-}
         function deleteGuest(index) {
             if (confirm("Yakin ingin menghapus data tamu ini?")) {
                 const guests = JSON.parse(localStorage.getItem("guests") || "[]");
@@ -465,51 +425,99 @@ function changeTamuBackground() {
 }
 changeTamuBackground();
 setInterval(changeTamuBackground, 5000);
-function updateStats() {
-    const guests = JSON.parse(localStorage.getItem("guests") || "[]");
+// === PAGINATION ===
+let currentPage = 1;
+const itemsPerPage = 10;
 
-    const total = guests.length;
-    const individu = guests.filter(g => g.rombongan === "Individu").length;
-    const rombongan = guests.filter(g => g.rombongan === "Rombongan").length;
-
-    document.getElementById("statTotal").textContent = total;
-    document.getElementById("statIndividu").textContent = individu;
-    document.getElementById("statRombongan").textContent = rombongan;
-}
-
-// Panggil updateStats tiap kali load data
 function loadGuests() {
-    const guests = JSON.parse(localStorage.getItem("guests") || "[]"),
-        search = document.getElementById("searchInput").value.toLowerCase(),
-        list = document.getElementById("guestList");
+    const guests = JSON.parse(localStorage.getItem("guests") || "[]");
+    const search = document.getElementById("searchInput").value.toLowerCase();
+    const startDate = document.getElementById("startDate")?.value || "";
+    const endDate = document.getElementById("endDate")?.value || "";
+    const list = document.getElementById("guestList");
 
-    list.innerHTML = guests
-        .filter(e =>
+    // === Filter data ===
+    const filtered = guests.filter(e => {
+        const tanggal = new Date(e.waktu).toISOString().slice(0, 10);
+        const cocokSearch =
             e.nama.toLowerCase().includes(search) ||
-            new Date(e.waktu).toISOString().slice(0, 10).includes(search)
-        )
-        .map((e, i) => `
-            <tr class="border-b hover:bg-gray-50">
-                <td class="p-2">${new Date(e.waktu).toLocaleString()}</td>
-                <td class="p-2">${e.nik}</td>
-                <td class="p-2">${e.nama}</td>
-                <td class="p-2">${e.alamat}</td>
-                <td class="p-2">${e.telepon}</td>
-                <td class="p-2">${e.instansi}</td>
-                <td class="p-2">${e.bertemu}</td>
-                <td class="p-2">${e.tujuan}</td>
-                <td class="p-2">${e.rombongan}</td>
-                <td class="p-2">${e.foto ? `<img src="${e.foto}" class="w-20 h-16 object-cover rounded cursor-pointer" onclick="openModal('${i}')"/>` : '-'}</td>
-                <td class="p-2">${e.petugas}</td>
-                <td class="p-2 flex gap-2">
-                    <button onclick="editGuest(${i})" class="px-2 py-1 bg-yellow-400 rounded hover:bg-yellow-500">✏️</button>
-                    <button onclick="deleteGuest(${i})" class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600">🗑️</button>
-                </td>
-            </tr>
-        `).join("");
+            tanggal.includes(search);
+        let cocokTanggal = true;
+        if (startDate && tanggal < startDate) cocokTanggal = false;
+        if (endDate && tanggal > endDate) cocokTanggal = false;
+        return cocokSearch && cocokTanggal;
+    });
 
-    updateStats(); // update statistik setelah load
+    // === Pagination logic ===
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+    if (currentPage > totalPages) currentPage = totalPages || 1;
+
+    const start = (currentPage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    const paginatedData = filtered.slice(start, end);
+
+    // === Render tabel ===
+    list.innerHTML = paginatedData.map((e, i) => `
+        <tr class="border-b hover:bg-gray-50">
+            <td class="p-2">${new Date(e.waktu).toLocaleString()}</td>
+            <td class="p-2">${e.nik}</td>
+            <td class="p-2">${e.nama}</td>
+            <td class="p-2">${e.alamat}</td>
+            <td class="p-2">${e.telepon}</td>
+            <td class="p-2">${e.instansi}</td>
+            <td class="p-2">${e.bertemu}</td>
+            <td class="p-2">${e.tujuan}</td>
+            <td class="p-2">${e.rombongan}</td>
+            <td class="p-2">
+                ${e.foto ? `<img src="${e.foto}" class="w-20 h-16 object-cover rounded cursor-pointer" onclick="openModal('${start + i}')"/>` : '-'}
+            </td>
+            <td class="p-2">${e.petugas}</td>
+            <td class="p-2 flex gap-2">
+                <button onclick="editGuest(${start + i})" class="px-2 py-1 bg-yellow-400 rounded hover:bg-yellow-500">✏️</button>
+                <button onclick="deleteGuest(${start + i})" class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600">🗑️</button>
+            </td>
+        </tr>
+    `).join("");
+
+    // === Update kontrol pagination ===
+    document.getElementById("pageInfo").textContent =
+        filtered.length === 0
+            ? "Tidak ada data"
+            : `Halaman ${currentPage} dari ${totalPages}`;
+
+    document.getElementById("prevPage").disabled = currentPage === 1;
+    document.getElementById("nextPage").disabled = currentPage === totalPages || totalPages === 0;
+
+    updateStats();
 }
+
+// Tombol prev/next
+document.getElementById("prevPage").addEventListener("click", () => {
+    if (currentPage > 1) {
+        currentPage--;
+        loadGuests();
+    }
+});
+
+document.getElementById("nextPage").addEventListener("click", () => {
+    currentPage++;
+    loadGuests();
+});
+
+// Refresh otomatis saat search atau filter berubah
+document.getElementById("searchInput").addEventListener("input", () => {
+    currentPage = 1;
+    loadGuests();
+});
+document.getElementById("startDate").addEventListener("change", () => {
+    currentPage = 1;
+    loadGuests();
+});
+document.getElementById("endDate").addEventListener("change", () => {
+    currentPage = 1;
+    loadGuests();
+});
+
 
     </script>
 </body>
